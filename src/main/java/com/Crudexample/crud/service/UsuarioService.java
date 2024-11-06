@@ -1,42 +1,57 @@
 package com.Crudexample.crud.service;
 
 import com.Crudexample.crud.model.Usuario;
+import com.Crudexample.crud.repository.UsuarioRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
-public class UsuarioService {
+import java.util.Optional;
 
-    private final Connection conexao;
-    public UsuarioService(Connection conexao) {
-        this.conexao = conexao;
+@Service
+public class UsuarioService {
+    private final UsuarioRepository usuarioRepository;
+
+    public UsuarioService(UsuarioRepository usuarioRepository) {
+        this.usuarioRepository = usuarioRepository;
+    }
+    public Optional<Usuario> getUsuarioById(int id){
+        return usuarioRepository.findById(id);
     }
     public List<Usuario> buscarPorIdade(int idadeMaior) {
+        return usuarioRepository.findByIdadeGreaterThan(idadeMaior);
+    }
+    public Usuario create(Usuario usuario){
+        return usuarioRepository.save(usuario);
+    }
+    public Usuario update(int id, Usuario usuarioDetails){
+        return usuarioRepository.findById(id).map(usuario -> {
+            // Atualiza os campos do usuário existente com os novos detalhes
+            usuario.setNome(usuarioDetails.getNome());
+            usuario.setLogin(usuarioDetails.getLogin());
+            usuario.setSenha(usuarioDetails.getSenha());
+            usuario.setEmail(usuarioDetails.getEmail());
+            usuario.setIdade(usuarioDetails.getIdade());
+            // Salva o usuário atualizado
+            return usuarioRepository.save(usuario);
+        }).orElseThrow(() -> new EntityNotFoundException("Usuário com ID " + id + " não encontrado."));
+    }
+    public Usuario delete(int id) {
+        return usuarioRepository.findById(id)
+                .map(usuario -> {
+                    usuarioRepository.delete(usuario); // Deleta o usuário encontrado
+                    return usuario; // Retorna o usuário deletado
+                })
+                .orElseThrow(() -> new EntityNotFoundException("Usuário com ID " + id + " não encontrado."));
+    }
 
-        String sqlSelectByIdade = "SELECT * FROM usuario WHERE idade > ?";
-        List<Usuario> usuarios = new ArrayList<>();
-
-        try {
-            PreparedStatement stmt = conexao.prepareStatement(sqlSelectByIdade);
-            stmt.setInt(1, idadeMaior);
-            ResultSet resultSet = stmt.executeQuery();
-            //Equanto exister usuarios com aquele idade o while percorre e adiciona dentro da lista
-            while (resultSet.next()) {
-                Usuario usuario = new Usuario();
-                usuario.setIdUsuario(resultSet.getInt("idusuario"));
-                usuario.setNome(resultSet.getString("nome"));
-                usuario.setLogin(resultSet.getString("login"));
-                usuario.setSenha(resultSet.getString("senha"));
-                usuario.setEmail(resultSet.getString("email"));
-                usuario.setIdade(resultSet.getInt("idade"));
-                usuarios.add(usuario);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return usuarios;
+    public List<Usuario> findAll() {
+        return usuarioRepository.findAll();
     }
 }
+
+//verificar se o id existe no banco de dados antes de fazer a exclusao;
+//criar variavle com o id do ususario
+//pegar essa variavel e apagar
+//tratar erro
